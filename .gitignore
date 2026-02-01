@@ -1,0 +1,4 @@
+__pycache__/
+.env
+email_rewriter.log
+*.pyc
