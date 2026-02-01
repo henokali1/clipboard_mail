@@ -12,36 +12,46 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Configuration
-LOG_FILE = "email_rewriter.log"
 POLL_INTERVAL = 1.0  # Seconds to wait between clipboard checks
 
 # Regex pattern for email detection
-# Detects: Starts with Dear/Hi/Hey and ends with Kind regards,
-# Case-insensitive, matches across multiple lines
 EMAIL_PATTERN = re.compile(r"^(Dear|Hi|Hey)(.*)Kind regards,$", re.DOTALL | re.IGNORECASE)
 
-# Setup logging
-logging.basicConfig(
-    filename=LOG_FILE,
-    level=logging.INFO,
-    format="%(asctime)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S"
-)
+def setup_logging():
+    """Sets up dynamic daily logging in a nested folder structure: logs/YYYY/MM/DD-Mon-YYYY.txt"""
+    now = datetime.now()
+    year = now.strftime("%Y")
+    month = now.strftime("%m")
+    day_str = now.strftime("%d-%b-%Y") # e.g., 02-Feb-2026
+    
+    log_dir = os.path.join("logs", year, month)
+    os.makedirs(log_dir, exist_ok=True)
+    
+    log_file = os.path.join(log_dir, f"{day_str}.txt")
+    
+    logging.basicConfig(
+        filename=log_file,
+        level=logging.INFO,
+        format="%(asctime)s - %(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+    return log_file
+
+# Initialize logging
+LOG_FILE = setup_logging()
 
 def get_openai_client():
     """
-    Initializes OpenAI client using environment variables.
-    Following user instructions to use API_USERNAME and API_PASSWORD.
+    Initializes OpenAI client using the OPENAI_API_KEY environment variable.
     """
-    # Use API_PASSWORD as the API Key, API_USERNAME as Org ID (if applicable)
-    api_key = os.environ.get("API_PASSWORD")
-    org_id = os.environ.get("API_USERNAME")
+    api_key = os.environ.get("OPENAI_API_KEY")
     
     if not api_key:
-        print("Error: API_PASSWORD environment variable not set.")
+        print("Error: OPENAI_API_KEY environment variable not set.")
+        logging.error("OPENAI_API_KEY environment variable not set.")
         return None
     
-    return OpenAI(api_key=api_key, organization=org_id)
+    return OpenAI(api_key=api_key)
 
 def send_notification(title, message):
     """Sends a system notification."""
@@ -77,7 +87,9 @@ def main():
 
     print("Email Rewriter is running. Monitoring clipboard for 'Dear/Hi/Hey ... Kind regards,'...")
     
-    last_processed_text = ""
+    # Capture initial clipboard state to avoid immediate re-processing on startup
+    initial_text = pyperclip.paste()
+    last_processed_text = initial_text.replace("\r\n", "\n").strip() if initial_text else ""
     last_rewritten_text = ""
 
     while True:
@@ -88,36 +100,37 @@ def main():
                 time.sleep(POLL_INTERVAL)
                 continue
 
-            # Strip whitespace for comparison
-            current_text_stripped = current_text.strip()
+            # Normalize line endings and strip whitespace for robust comparison
+            current_text_normalized = current_text.replace("\r\n", "\n").strip()
 
             # 2. Check if it matches the pattern and hasn't been processed
-            # We also ensure we don't re-process the text we just outputted
-            if (EMAIL_PATTERN.match(current_text_stripped) and 
-                current_text_stripped != last_processed_text and 
-                current_text_stripped != last_rewritten_text):
+            if (EMAIL_PATTERN.match(current_text_normalized) and 
+                current_text_normalized != last_processed_text and 
+                current_text_normalized != last_rewritten_text):
                 
                 print(f"Email detected! Rewriting...")
-                send_notification("Email Detected", "Rewriting your email for clarity and professionalism...")
+                # send_notification("Email Detected", "Rewriting your email for clarity and professionalism...")
+                send_notification("ED", "Rewriting...")
                 
                 # 3. Rewrite using OpenAI
-                rewritten_text = rewrite_email(client, current_text_stripped)
+                rewritten_text = rewrite_email(client, current_text_normalized)
                 
                 if rewritten_text:
                     # 4. Update clipboard
                     pyperclip.copy(rewritten_text)
                     
-                    # Store to prevent loops
-                    last_processed_text = current_text_stripped
-                    last_rewritten_text = rewritten_text.strip()
+                    # Store normalized versions to prevent loops
+                    last_processed_text = current_text_normalized
+                    last_rewritten_text = rewritten_text.replace("\r\n", "\n").strip()
                     
                     # 5. Log the operation
-                    logging.info(f"ORIGINAL:\n{current_text_stripped}")
-                    logging.info(f"REWRITTEN:\n{rewritten_text}")
+                    logging.info(f"ORIGINAL:\n{current_text_normalized}")
+                    logging.info(f"REWRITTEN:\n{last_rewritten_text}")
                     logging.info("-" * 40)
                     
                     # 6. Notify success
-                    send_notification("Success!", "Email rewritten and copied back to clipboard.")
+                    # send_notification("Success!", "Email rewritten and copied back to clipboard.")
+                    send_notification("ERS!")
                     print("Successfully rewritten and copied back to clipboard.")
                 else:
                     print("Failed to rewrite email. Check logs for details.")
