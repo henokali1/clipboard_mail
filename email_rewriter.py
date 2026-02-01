@@ -31,16 +31,14 @@ logging.basicConfig(
 def get_openai_client():
     """
     Initializes OpenAI client using environment variables.
-    Note: Standard OpenAI API uses an API Key. 
-    Following user instructions to use OPENAI_API_USERNAME and OPENAI_API_PASSWORD.
-    We will map OPENAI_API_PASSWORD to the API Key.
+    Following user instructions to use API_USERNAME and API_PASSWORD.
     """
-    # Use PASSWORD as the API Key, USERNAME as Org ID (if applicable)
-    api_key = os.getenv("OPENAI_API_PASSWORD")
-    org_id = os.getenv("OPENAI_API_USERNAME")
+    # Use API_PASSWORD as the API Key, API_USERNAME as Org ID (if applicable)
+    api_key = os.environ.get("API_PASSWORD")
+    org_id = os.environ.get("API_USERNAME")
     
     if not api_key:
-        print("Error: OPENAI_API_PASSWORD environment variable not set.")
+        print("Error: API_PASSWORD environment variable not set.")
         return None
     
     return OpenAI(api_key=api_key, organization=org_id)

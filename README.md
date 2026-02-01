@@ -20,8 +20,8 @@ This Python script monitors your Windows 11 clipboard for specific email pattern
 
 2. **Configure Environment Variables**:
    Create a `.env` file or set the following environment variables:
-   - `OPENAI_API_USERNAME`: (Optional) Your OpenAI Organization ID.
-   - `OPENAI_API_PASSWORD`: (Required) Your OpenAI API Key.
+   - `API_USERNAME`: (Optional) Your OpenAI Organization ID.
+   - `API_PASSWORD`: (Required) Your OpenAI API Key.
 
 3. **Run the Script**:
    ```bash
