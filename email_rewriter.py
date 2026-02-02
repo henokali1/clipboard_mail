@@ -130,7 +130,7 @@ def main():
                     
                     # 6. Notify success
                     # send_notification("Success!", "Email rewritten and copied back to clipboard.")
-                    send_notification("ERS!")
+                    send_notification("ERS!", "")
                     print("Successfully rewritten and copied back to clipboard.")
                 else:
                     print("Failed to rewrite email. Check logs for details.")
