@@ -1,15 +1,34 @@
-# Professional Email Rewriter
+# Professional Email Assistant
 
-This Python script monitors your Windows 11 clipboard for specific email patterns and automatically rewrites them into a professional version using OpenAI's ChatGPT API.
+This Python script monitors your clipboard for message prefixes and automatically processes them using OpenAI's GPT-4o-mini API. It supports rewriting, generating replies, and polishing replies based on original queries.
 
 ## Features
 
-- **Automatic Detection**: Recognizes text starting with "Dear", "Hi", or "Hey" and ending with "Kind regards,".
-- **AI-Powered Rewriting**: Uses OpenAI to polish and professionalize your emails.
-- **Seamless Integration**: The rewritten email is automatically copied back to your clipboard.
-- **Notifications**: System alerts inform you when an email is detected and when the rewriting is complete.
-- **Logging**: Keeps a history of original and rewritten emails in `email_rewriter.log`.
-- **Safety**: Prevents infinite loops and reprocessing the same email.
+- **Multi-Mode Processing**: Use numeric prefixes (`1`, `2`, `3`) to trigger different AI actions.
+- **Smart Directory Logging**: Automatically organizes logs into folders by year and month (e.g., `logs/2026/02/02-Feb-2026.txt`).
+- **Standard Authentication**: Uses the `OPENAI_API_KEY` environment variable.
+- **Seamless Integration**: Processed text is automatically copied back to your clipboard.
+- **System Notifications**: Immediate feedback via system alerts.
+- **Clipboard Safety**: Prevents infinite loops and handles line-ending normalization.
+
+## Prefix Modes
+
+The script triggers based on the first character in your clipboard:
+
+### `1` - Professional Rewrite
+Used to polish an existing rough draft into a formal, concise version.
+*   **Format**: `1 [Your rough email draft]`
+*   **Output**: A polished version that maintains the original intent but uses professional language and fixed formatting.
+
+### `2` - Generate Reply from Intent
+Used to generate a full email based on a simple instruction or "intent".
+*   **Format**: `2 [Your intent or instruction]`
+*   **Output**: A complete professional email including a **Subject line**, a formal body, and ending with "Kind regards,".
+
+### `3` - Rewrite Reply for Query
+Used when you have a draft reply and want to ensure it properly addresses a specific query email.
+*   **Format**: `3 [Your draft reply] \n\n [The original query email]`
+*   **Output**: A rewritten version of your reply that is accurately tailored to the context of the query.
 
 ## Setup
 
@@ -18,34 +37,27 @@ This Python script monitors your Windows 11 clipboard for specific email pattern
    pip install -r requirements.txt
    ```
 
-2. **Configure Environment Variables**:
-   Create a `.env` file or set the following environment variables:
-   - `OPENAI_API_KEY`: (Required) Your OpenAI API Key or Auth Header value.
+2. **Configure Environment**:
+   Create a `.env` file in the project root:
+   ```env
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
 
-3. **Run the Script**:
+3. **Run the Assistant**:
    ```bash
    python email_rewriter.py
    ```
 
 ## Usage
 
-1. Write a rough draft of an email. Ensure it starts with "Hi" (or "Dear"/"Hey") and ends with "Kind regards,".
-2. Select the text and copy it (`Ctrl + C`).
-3. Wait for the notification.
-4. Paste the result (`Ctrl + V`).
+1. Write your text in any editor (Notepad, Outlook, etc.).
+2. Add the desired prefix (`1 `, `2 `, or `3 `) at the very beginning.
+3. Select the text and copy it (`Ctrl + C`).
+4. Wait for the "Success!" notification.
+5. Paste the result (`Ctrl + V`).
 
-## Example
-
-**Input copied to clipboard:**
-> Hi John,
->
-> I won't be able to make it to the meeting today. Something came up. Let's talk tomorrow.
->
-> Kind regards,
-
-**Auto-rewritten output on clipboard:**
-> Hi John,
->
-> I am writing to inform you that I will be unable to attend today's scheduled meeting due to an unforeseen conflict. I would like to suggest that we reconnect tomorrow to discuss the agenda.
->
-> Kind regards,
+## Directory Structure
+- `email_rewriter.py`: Main execution script.
+- `logs/`: Contains all historical logs (ignored by Git).
+  - `YYYY/MM/DD-Mon-YYYY.txt`: Daily log files.
+- `.env`: Your private API keys (ignored by Git).

@@ -14,8 +14,11 @@ load_dotenv()
 # Configuration
 POLL_INTERVAL = 1.0  # Seconds to wait between clipboard checks
 
-# Regex pattern for email detection
-EMAIL_PATTERN = re.compile(r"^(Dear|Hi|Hey)(.*)Kind regards,$", re.DOTALL | re.IGNORECASE)
+# Multi-mode Regex patterns
+# Mode 1: "1 <email_text>" -> Rewrite professionally
+# Mode 2: "2 <intent_text>" -> Generate reply email with subject
+# Mode 3: "3 <reply_to_rewrite>\n\n<original_query>" -> Rewrite reply for query
+MODE_PATTERN = re.compile(r"^([123])\s+(.*)$", re.DOTALL | re.IGNORECASE)
 
 def setup_logging():
     """Sets up dynamic daily logging in a nested folder structure: logs/YYYY/MM/DD-Mon-YYYY.txt"""
@@ -53,7 +56,7 @@ def get_openai_client():
     
     return OpenAI(api_key=api_key)
 
-def send_notification(title, message):
+def send_notification(title, message=""):
     """Sends a system notification."""
     try:
         notification.notify(
@@ -65,14 +68,29 @@ def send_notification(title, message):
     except Exception as e:
         print(f"Failed to send notification: {e}")
 
-def rewrite_email(client, original_text):
-    """Sends the email to OpenAI for professional rewriting."""
+def process_email(client, mode, content):
+    """Handles different processing modes using OpenAI."""
     try:
+        system_prompt = "You are a professional assistant."
+        user_prompt = ""
+
+        if mode == "1":
+            system_prompt = "You are a professional assistant that rewrites emails to be clear, professional, and concise. Maintain the original intent and tone but polish the language. Ensure the output starts exactly as provided (e.g., 'Dear [Name]') and ends exactly with 'Kind regards,'. Use simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting."
+            user_prompt = f"Please rewrite the following email professionally:\n\n{content}"
+        
+        elif mode == "2":
+            system_prompt = "You are a professional assistant. Write a professional and polite email that is concise and direct. Use simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting, ending with 'Kind regards,'. Do not add a place holder like [Your Name] after Kind regards,"
+            user_prompt = f"Generate a professional email reply with a subject line for the following intent:\n\n{content}"
+            
+        elif mode == "3":
+            system_prompt = "You are a professional assistant. Write a professional and polite email that is concise and direct. You will be provided with a draft reply and the original query email. Rewrite the draft reply to addresses the query by using simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting, ending with 'Kind regards,'. Do not add a place holder like [Your Name] after Kind regards,"
+            user_prompt = f"Rewrite the following reply email specifically to address the query email provided below:\n\n{content}"
+
         response = client.chat.completions.create(
             model="gpt-4o-mini", 
             messages=[
-                {"role": "system", "content": "You are a professional assistant that rewrites emails to be clear, professional, and concise. Maintain the original intent and tone but polish the language. Ensure the output starts exactly as provided (e.g., 'Dear [Name]') and ends exactly with 'Kind regards,'."},
-                {"role": "user", "content": f"Please rewrite the following email professionally:\n\n{original_text}"}
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
             ]
         )
         return response.choices[0].message.content.strip()
@@ -85,7 +103,7 @@ def main():
     if not client:
         return
 
-    print("Email Rewriter is running. Monitoring clipboard for 'Dear/Hi/Hey ... Kind regards,'...")
+    print("Email Rewriter is running. Use prefixes (1, 2, 3) followed by your text...")
     
     # Capture initial clipboard state to avoid immediate re-processing on startup
     initial_text = pyperclip.paste()
@@ -103,37 +121,49 @@ def main():
             # Normalize line endings and strip whitespace for robust comparison
             current_text_normalized = current_text.replace("\r\n", "\n").strip()
 
-            # 2. Check if it matches the pattern and hasn't been processed
-            if (EMAIL_PATTERN.match(current_text_normalized) and 
+            # 2. Check if it matches the prefix pattern and hasn't been processed
+            match = MODE_PATTERN.match(current_text_normalized)
+            if (match and 
                 current_text_normalized != last_processed_text and 
                 current_text_normalized != last_rewritten_text):
                 
-                print(f"Email detected! Rewriting...")
-                # send_notification("Email Detected", "Rewriting your email for clarity and professionalism...")
-                send_notification("ED", "Rewriting...")
+                mode = match.group(1)
+                content = match.group(2).strip()
                 
-                # 3. Rewrite using OpenAI
-                rewritten_text = rewrite_email(client, current_text_normalized)
+                print(f"Prefix {mode} detected! Processing...")
+                send_notification("Email Tool", f"Processing Mode {mode}...")
                 
-                if rewritten_text:
+                # 3. Process using OpenAI
+                processed_text = process_email(client, mode, content)
+                
+                if processed_text:
                     # 4. Update clipboard
-                    pyperclip.copy(rewritten_text)
+                    pyperclip.copy(processed_text)
                     
                     # Store normalized versions to prevent loops
                     last_processed_text = current_text_normalized
-                    last_rewritten_text = rewritten_text.replace("\r\n", "\n").strip()
+                    last_rewritten_text = processed_text.replace("\r\n", "\n").strip()
                     
                     # 5. Log the operation
-                    logging.info(f"ORIGINAL:\n{current_text_normalized}")
-                    logging.info(f"REWRITTEN:\n{last_rewritten_text}")
+                    logging.info(f"MODE: {mode}")
+                    logging.info(f"INPUT:\n{content}")
+                    logging.info(f"OUTPUT:\n{processed_text}")
                     logging.info("-" * 40)
                     
                     # 6. Notify success
-                    # send_notification("Success!", "Email rewritten and copied back to clipboard.")
-                    send_notification("ERS!", "")
-                    print("Successfully rewritten and copied back to clipboard.")
+                    send_notification("Success!", "")
+                    print("Successfully processed and copied back to clipboard.")
                 else:
-                    print("Failed to rewrite email. Check logs for details.")
+                    print("Failed to process. Check logs for details.")
+
+            time.sleep(POLL_INTERVAL)
+            
+        except KeyboardInterrupt:
+            print("\nStopping Email Rewriter.")
+            break
+        except Exception as e:
+            logging.error(f"Unexpected error in main loop: {e}")
+            time.sleep(POLL_INTERVAL)
 
             time.sleep(POLL_INTERVAL)
             
