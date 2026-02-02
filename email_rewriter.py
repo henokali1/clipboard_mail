@@ -110,6 +110,8 @@ def main():
     last_processed_text = initial_text.replace("\r\n", "\n").strip() if initial_text else ""
     last_rewritten_text = ""
 
+    send_notification("ER Started!", "")
+
     while True:
         try:
             # 1. Capture clipboard content
