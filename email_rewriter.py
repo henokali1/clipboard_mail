@@ -18,7 +18,8 @@ POLL_INTERVAL = 1.0  # Seconds to wait between clipboard checks
 # Mode 1: "1 <email_text>" -> Rewrite professionally
 # Mode 2: "2 <intent_text>" -> Generate reply email with subject
 # Mode 3: "3 <reply_to_rewrite>\n\n<original_query>" -> Rewrite reply for query
-MODE_PATTERN = re.compile(r"^([123])\s+(.*)$", re.DOTALL | re.IGNORECASE)
+# Mode 4: "4 <intent_text>" -> Rewrite with subject line
+MODE_PATTERN = re.compile(r"^([1234])\s+(.*)$", re.DOTALL | re.IGNORECASE)
 
 def setup_logging():
     """Sets up dynamic daily logging in a nested folder structure: logs/YYYY/MM/DD-Mon-YYYY.txt"""
@@ -86,6 +87,10 @@ def process_email(client, mode, content):
             system_prompt = "You are a professional assistant. Write a professional and polite email that is concise and direct. You will be provided with a draft reply and the original query email. Rewrite the draft reply to addresses the query by using simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting, ending with 'Kind regards,'. Do not add a place holder like [Your Name] after Kind regards,"
             user_prompt = f"Rewrite the following reply email specifically to address the query email provided below:\n\n{content}"
 
+        elif mode == "4":
+            system_prompt = "You are a professional assistant that rewrites emails to be clear, professional, and concise. Maintain the original intent and tone but polish the language. Ensure the output starts exactly as provided (e.g., 'Dear [Name]') and ends exactly with 'Kind regards,'. Use simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting."
+            user_prompt = f"Please rewrite the following email with a subject line for the following intent:\n\n{content}"
+
         response = client.chat.completions.create(
             model="gpt-4o-mini", 
             messages=[
@@ -103,7 +108,7 @@ def main():
     if not client:
         return
 
-    print("Email Rewriter is running. Use prefixes (1, 2, 3) followed by your text...")
+    print("Email Rewriter is running. Use prefixes (1, 2, 3, 4) followed by your text...")
     
     # Capture initial clipboard state to avoid immediate re-processing on startup
     initial_text = pyperclip.paste()
