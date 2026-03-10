@@ -2,6 +2,7 @@ import os
 import time
 import re
 import logging
+import winsound
 from datetime import datetime
 import pyperclip
 from openai import OpenAI
@@ -76,19 +77,19 @@ def process_email(client, mode, content):
         user_prompt = ""
 
         if mode == "1":
-            system_prompt = "You are a professional assistant that rewrites emails to be clear, professional, and concise. Maintain the original intent and tone but polish the language. Ensure the output starts exactly as provided (e.g., 'Dear [Name]') and ends exactly with 'Kind regards,'. Use simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting."
+            system_prompt = "You are a professional assistant that rewrites emails to be clear, professional, and concise. Maintain the original intent and tone but polish the language. Ensure the output starts exactly as provided (e.g., 'Dear [Name]') and ends exactly with 'Kind regards,'. Use simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting. Write like a real human, be professional, but natural, like you're explaining something to a smart friend over coffee. Avoid buzzwords, corporate jargon, and Em dashes never sound like a press release. Be clear, Direct and conversational."
             user_prompt = f"Please rewrite the following email professionally:\n\n{content}"
         
         elif mode == "2":
-            system_prompt = "You are a professional assistant. Write a professional and polite email that is concise and direct. Use simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting, ending with 'Kind regards,'. Do not add a place holder like [Your Name] after Kind regards,"
+            system_prompt = "You are a professional assistant. Write a professional and polite email that is concise and direct. Use simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting, ending with 'Kind regards,'. Do not add a place holder like [Your Name] after Kind regards, Write like a real human, be professional, but natural, like you're explaining something to a smart friend over coffee. Avoid buzzwords, corporate jargon, and Em dashes never sound like a press release. Be clear, Direct and conversational."
             user_prompt = f"Generate a professional email reply with a subject line for the following intent:\n\n{content}"
             
         elif mode == "3":
-            system_prompt = "You are a professional assistant. Write a professional and polite email that is concise and direct. You will be provided with a draft reply and the original query email. Rewrite the draft reply to addresses the query by using simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting, ending with 'Kind regards,'. Do not add a place holder like [Your Name] after Kind regards,"
+            system_prompt = "You are a professional assistant. Write a professional and polite email that is concise and direct. You will be provided with a draft reply and the original query email. Rewrite the draft reply to addresses the query by using simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting, ending with 'Kind regards,'. Do not add a place holder like [Your Name] after Kind regards, Write like a real human, be professional, but natural, like you're explaining something to a smart friend over coffee. Avoid buzzwords, corporate jargon, and Em dashes never sound like a press release. Be clear, Direct and conversational."
             user_prompt = f"Rewrite the following reply email specifically to address the query email provided below:\n\n{content}"
 
         elif mode == "4":
-            system_prompt = "You are a professional assistant that rewrites emails to be clear, professional, and concise. Maintain the original intent and tone but polish the language. Ensure the output starts exactly as provided (e.g., 'Dear [Name]') and ends exactly with 'Kind regards,'. Use simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting."
+            system_prompt = "You are a professional assistant that rewrites emails to be clear, professional, and concise. Maintain the original intent and tone but polish the language. Ensure the output starts exactly as provided (e.g., 'Dear [Name]') and ends exactly with 'Kind regards,'. Use simple, clear language and avoid unnecessary words, filler phrases, dashes, or decorative characters. Keep the tone formal and respectful. Do not mention things like I hope this message finds you well. Do not add emojis or extra formatting. Write like a real human, be professional, but natural, like you're explaining something to a smart friend over coffee. Avoid buzzwords, corporate jargon, and Em dashes never sound like a press release. Be clear, Direct and conversational."
             user_prompt = f"Please rewrite the following email with a subject line for the following intent:\n\n{content}"
 
         response = client.chat.completions.create(
@@ -115,7 +116,7 @@ def main():
     last_processed_text = initial_text.replace("\r\n", "\n").strip() if initial_text else ""
     last_rewritten_text = ""
 
-    send_notification("ER Started!", "")
+    # send_notification("ER Started!", "")
 
     while True:
         try:
@@ -138,7 +139,10 @@ def main():
                 content = match.group(2).strip()
                 
                 print(f"Prefix {mode} detected! Processing...")
-                send_notification("Email Tool", f"Processing Mode {mode}...")
+                # send_notification("Email Tool", f"Processing Mode {mode}...")
+                
+                # Play notification sound for processing start
+                winsound.PlaySound(r"C:\Windows\Media\chimes.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
                 
                 # 3. Process using OpenAI
                 processed_text = process_email(client, mode, content)
@@ -158,19 +162,16 @@ def main():
                     logging.info("-" * 40)
                     
                     # 6. Notify success
-                    send_notification("Success!", "")
+                    # send_notification("Success!", "")
+                    
+                    # Play notification sound when done
+                    winsound.PlaySound(r"C:\Windows\Media\Windows Proximity Notification.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
+                    
                     print("Successfully processed and copied back to clipboard.")
                 else:
+                    # Optional: play a different sound on error
+                    winsound.PlaySound(r"C:\Windows\Media\Windows Error.wav", winsound.SND_FILENAME | winsound.SND_ASYNC)
                     print("Failed to process. Check logs for details.")
-
-            time.sleep(POLL_INTERVAL)
-            
-        except KeyboardInterrupt:
-            print("\nStopping Email Rewriter.")
-            break
-        except Exception as e:
-            logging.error(f"Unexpected error in main loop: {e}")
-            time.sleep(POLL_INTERVAL)
 
             time.sleep(POLL_INTERVAL)
             
